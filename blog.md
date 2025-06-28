@@ -1,37 +1,37 @@
-# Building Cursor with Cursor: A Step-by-Step Guide to Creating Your Own AI Coding Agent
+# 用Cursor构建Cursor：创建你自己的AI编码代理的分步指南
 
-![Banner Image](./assets/banner.png)
+![横幅图片](./assets/banner.png)
 
-Have you ever wished you could customize your AI coding assistant to work exactly the way you want? What if you could build your own version of Cursor—an AI-powered code editor—using Cursor itself? That's exactly what we're doing in this tutorial: creating a customizable, open-source AI coding agent that operates right within Cursor.
+你是否曾经希望可以自定义你的AI编码助手，让它完全按照你想要的方式工作？如果你可以使用Cursor本身来构建你自己的Cursor版本——一个AI驱动的代码编辑器呢？这正是我们在本教程中要做的事情：创建一个可定制的、开源的AI编码代理，就在Cursor内部运行。
 
-In this step-by-step guide, we'll dive deep into the code to show you how to build a powerful AI assistant that can:
+在这个分步指南中，我们将深入代码，向你展示如何构建一个强大的AI助手，它可以：
 
-- Navigate and understand codebases
-- Implement code changes based on natural language instructions
-- Make intelligent decisions about which files to inspect or modify
-- Learn from its own history of operations
+- 导航和理解代码库
+- 基于自然语言指令实现代码更改
+- 智能决定检查或修改哪些文件
+- 从其操作历史中学习
 
-Let's dive in!
+让我们开始吧！
 
-## Table of Contents
+## 目录
 
-1. [Understanding the Architecture](#understanding-the-architecture-1)
-2. [Setting Up Your Environment](#setting-up-your-environment-2)
-3. [The Core: Building with Pocket Flow](#the-core-building-with-pocket-flow-3)
-4. [Implementing Decision Making](#implementing-decision-making-4)
-5. [File Operations: Reading and Writing Code](#file-operations-reading-and-writing-code-5)
-6. [Code Analysis and Planning](#code-analysis-and-planning-6)
-7. [Applying Code Changes](#applying-code-changes-7)
-8. [Running Your Agent](#running-your-agent-8)
-9. [Advanced: Customizing Your Agent](#advanced-customizing-your-agent-9)
-10. [Conclusion and Next Steps](#conclusion-and-next-steps-10)
+1. [理解架构](#understanding-the-architecture-1)
+2. [设置环境](#setting-up-your-environment-2)
+3. [核心：使用Pocket Flow构建](#the-core-building-with-pocket-flow-3)
+4. [实现决策制定](#implementing-decision-making-4)
+5. [文件操作：读取和编写代码](#file-operations-reading-and-writing-code-5)
+6. [代码分析和规划](#code-analysis-and-planning-6)
+7. [应用代码更改](#applying-code-changes-7)
+8. [运行你的代理](#running-your-agent-8)
+9. [高级：自定义你的代理](#advanced-customizing-your-agent-9)
+10. [结论和下一步](#conclusion-and-next-steps-10)
 
 <a id="understanding-the-architecture-1"></a>
-## 1. Understanding the Architecture
+## 1. 理解架构
 
-Before we write a single line of code, let's understand the architecture of our Cursor Agent. The system is built on a flow-based architecture using [Pocket Flow](https://github.com/The-Pocket/PocketFlow), a minimalist 100-line LLM framework that enables agentic development.
+在编写任何代码之前，让我们理解我们的Cursor代理的架构。该系统基于使用[Pocket Flow](https://github.com/The-Pocket/PocketFlow)的基于流程的架构构建，这是一个极简的100行LLM框架，支持代理开发。
 
-Here's a high-level overview of our architecture:
+以下是我们架构的高级概述：
 
 ```mermaid
 flowchart TD
@@ -47,36 +47,36 @@ flowchart TD
     I --> A
 ```
 
-This architecture separates concerns into distinct nodes:
-- Decision making (what operation to perform next)
-- File operations (reading, writing, and searching)
-- Code analysis (understanding and planning changes)
-- Code modification (safely applying changes)
+这个架构将关注点分离到不同的节点：
+- 决策制定（下一步执行什么操作）
+- 文件操作（读取、写入和搜索）
+- 代码分析（理解和规划更改）
+- 代码修改（安全应用更改）
 
 <a id="setting-up-your-environment-2"></a>
-## 2. Setting Up Your Environment
+## 2. 设置环境
 
-Let's get our environment ready:
+让我们准备好环境：
 
 ```bash
-# Clone the repository
+# 克隆仓库
 git clone https://github.com/The-Pocket/Tutorial-Cursor
 cd Tutorial-Cursor
 
-# Install dependencies
+# 安装依赖
 pip install -r requirements.txt
 ```
 
 <a id="the-core-building-with-pocket-flow-3"></a>
-## 3. The Core: Building with Pocket Flow
+## 3. 核心：使用Pocket Flow构建
 
-Our agent is built on the Pocket Flow framework, which provides three core abstractions:
+我们的代理基于Pocket Flow框架构建，它提供了三个核心抽象：
 
-1. **Nodes**: Individual units of computation that perform specific tasks
-2. **Flows**: Directed graphs of nodes that define the program's execution path
-3. **Shared Store**: A dictionary that all nodes can access to share data
+1. **节点**：执行特定任务的单个计算单元
+2. **流程**：定义程序执行路径的节点的有向图
+3. **共享存储**：所有节点都可以访问的字典，用于共享数据
 
-Let's look at the core imports and setup:
+让我们看看核心导入和设置：
 
 ```python
 # flow.py
@@ -87,7 +87,7 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Any, Tuple
 
-# Import utility functions
+# 导入工具函数
 from utils.call_llm import call_llm
 from utils.read_file import read_file
 from utils.delete_file import delete_file
@@ -96,19 +96,19 @@ from utils.search_ops import grep_search
 from utils.dir_ops import list_dir
 ```
 
-This imports the core classes from Pocket Flow and our custom utility functions that handle file operations and LLM calls.
+这导入了Pocket Flow的核心类和我们的自定义工具函数，这些函数处理文件操作和LLM调用。
 
 <a id="implementing-decision-making-4"></a>
-## 4. Implementing Decision Making
+## 4. 实现决策制定
 
-At the heart of our agent is the `MainDecisionAgent`, which determines what action to take based on the user's request and the current state of the system.
+我们代理的核心是`MainDecisionAgent`，它根据用户的请求和系统的当前状态决定采取什么行动。
 
-Here's how it's implemented:
+以下是它的实现方式：
 
 ```python
 class MainDecisionAgent(Node):
     def prep(self, shared: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]]]:
-        # Get user query and history
+        # 获取用户查询和历史
         user_query = shared.get("user_query", "")
         history = shared.get("history", [])
         
@@ -117,10 +117,10 @@ class MainDecisionAgent(Node):
     def exec(self, inputs: Tuple[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
         user_query, history = inputs
         
-        # Format history for context
+        # 格式化历史以提供上下文
         history_str = format_history_summary(history)
         
-        # Create prompt for the LLM
+        # 为LLM创建提示
         prompt = f"""You are a coding assistant that helps modify and navigate code. Given the following request, 
 decide which tool to use from the available options.
 
@@ -147,21 +147,21 @@ params:
   # parameters specific to the chosen tool
 ```"""
         
-        # Call LLM to decide action
+        # 调用LLM决定行动
         response = call_llm(prompt)
         
-        # Parse YAML response
+        # 解析YAML响应
         yaml_content = extract_yaml_from_response(response)
         decision = yaml.safe_load(yaml_content)
         
-        # Validate the required fields
+        # 验证必需字段
         assert "tool" in decision, "Tool name is missing"
         assert "reason" in decision, "Reason is missing"
         
         return decision
     
     def post(self, shared: Dict[str, Any], prep_res: Any, exec_res: Dict[str, Any]) -> str:
-        # Add the decision to history
+        # 将决定添加到历史
         shared.setdefault("history", []).append({
             "tool": exec_res["tool"],
             "reason": exec_res["reason"],
@@ -169,46 +169,46 @@ params:
             "timestamp": datetime.now().isoformat()
         })
         
-        # Return the name of the tool to determine which node to execute next
+        # 返回工具名称以确定下一步执行哪个节点
         return exec_res["tool"]
 ```
 
-This node:
-1. Gathers the user's query and the history of previous actions
-2. Formats a prompt for the LLM with all available tools
-3. Calls the LLM to decide what action to take
-4. Parses the response and validates it
-5. Adds the decision to the history
-6. Returns the name of the selected tool, which determines the next node to execute
+这个节点：
+1. 收集用户的查询和之前操作的历史
+2. 为LLM格式化包含所有可用工具的提示
+3. 调用LLM决定采取什么行动
+4. 解析响应并验证它
+5. 将决定添加到历史
+6. 返回所选工具的名称，这决定了下一步要执行的节点
 
 <a id="file-operations-reading-and-writing-code-5"></a>
-## 5. File Operations: Reading and Writing Code
+## 5. 文件操作：读取和编写代码
 
-Let's look at how our agent reads files, which is a fundamental operation:
+让我们看看我们的代理如何读取文件，这是一个基本操作：
 
 ```python
 class ReadFileAction(Node):
     def prep(self, shared: Dict[str, Any]) -> str:
-        # Get parameters from the last history entry
+        # 从最后的历史条目获取参数
         history = shared.get("history", [])
         last_action = history[-1]
         file_path = last_action["params"].get("target_file")
         
-        # Ensure path is relative to working directory
+        # 确保路径相对于工作目录
         working_dir = shared.get("working_dir", "")
         full_path = os.path.join(working_dir, file_path) if working_dir else file_path
         
         return full_path
     
     def exec(self, file_path: str) -> Tuple[str, bool]:
-        # Call read_file utility which returns a tuple of (content, success)
+        # 调用read_file工具，它返回(content, success)的元组
         return read_file(file_path)
     
     def post(self, shared: Dict[str, Any], prep_res: str, exec_res: Tuple[str, bool]) -> str:
-        # Unpack the tuple returned by read_file()
+        # 解包read_file()返回的元组
         content, success = exec_res
         
-        # Update the result in the last history entry
+        # 在最后的历史条目中更新结果
         history = shared.get("history", [])
         if history:
             history[-1]["result"] = {
@@ -216,19 +216,19 @@ class ReadFileAction(Node):
                 "content": content
             }
         
-        return "decision"  # Go back to the decision node
+        return "decision"  # 回到决策节点
 ```
 
-The `read_file` utility function itself is implemented like this:
+`read_file`工具函数本身的实现如下：
 
 ```python
 def read_file(target_file: str) -> Tuple[str, bool]:
     """
-    Read content from a file with support for line ranges.
-    Prepends 1-based line numbers to each line in the output.
+    从文件中读取内容，支持行范围。
+    在输出的每行前添加基于1的行号。
     
     Returns:
-        Tuple of (file content with line numbers, success status)
+        包含(带行号的文件内容, 成功状态)的元组
     """
     try:
         if not os.path.exists(target_file):
@@ -236,7 +236,7 @@ def read_file(target_file: str) -> Tuple[str, bool]:
         
         with open(target_file, 'r', encoding='utf-8') as f:
             lines = f.readlines()
-            # Add line numbers to each line
+            # 为每行添加行号
             numbered_lines = [f"{i+1}: {line}" for i, line in enumerate(lines)]
             return ''.join(numbered_lines), True
             
@@ -244,21 +244,21 @@ def read_file(target_file: str) -> Tuple[str, bool]:
         return f"Error reading file: {str(e)}", False
 ```
 
-This provides a clean, line-numbered view of the file content that makes it easier for the LLM to reference specific lines in its analysis.
+这提供了文件的清晰、带行号的视图，使LLM更容易在其分析中引用特定行。
 
 <a id="code-analysis-and-planning-6"></a>
-## 6. Code Analysis and Planning
+## 6. 代码分析和规划
 
-When the agent needs to modify code, it first analyzes the code and plans the changes using `AnalyzeAndPlanNode`:
+当代理需要修改代码时，它首先使用`AnalyzeAndPlanNode`分析代码并规划更改：
 
 ```python
 class AnalyzeAndPlanNode(Node):
     def prep(self, shared: Dict[str, Any]) -> Dict[str, Any]:
-        # Get history
+        # 获取历史
         history = shared.get("history", [])
         last_action = history[-1]
         
-        # Get file content and edit instructions
+        # 获取文件内容和编辑指令
         file_content = last_action.get("file_content")
         instructions = last_action["params"].get("instructions")
         code_edit = last_action["params"].get("code_edit")
@@ -274,7 +274,7 @@ class AnalyzeAndPlanNode(Node):
         instructions = params["instructions"]
         code_edit = params["code_edit"]
         
-        # Generate a prompt for the LLM to analyze the edit
+        # 为LLM生成提示以分析编辑
         prompt = f"""
 As a code editing assistant, I need to convert the following code edit instruction 
 and code edit pattern into specific edit operations (start_line, end_line, replacement).
@@ -302,60 +302,60 @@ operations:
       # New code here
 ```"""
         
-        # Call LLM to analyze the edit
+        # 调用LLM分析编辑
         response = call_llm(prompt)
         
-        # Parse the response and extract edit operations
+        # 解析响应并提取编辑操作
         yaml_content = extract_yaml_from_response(response)
         result = yaml.safe_load(yaml_content)
         
-        # Store reasoning in shared memory
+        # 在共享内存中存储推理
         shared["edit_reasoning"] = result.get("reasoning", "")
         
-        # Return the operations
+        # 返回操作
         return result.get("operations", [])
 ```
 
-This node:
-1. Extracts the file content, instructions, and code edit pattern from the history
-2. Creates a prompt for the LLM to analyze the edit
-3. Calls the LLM to determine the exact line numbers and replacement text
-4. Parses the response to extract the edit operations
-5. Stores the reasoning in shared memory
-6. Returns the operations as a list of dictionaries
+这个节点：
+1. 从历史中提取文件内容、指令和代码编辑模式
+2. 为LLM创建提示以分析编辑
+3. 调用LLM确定确切的行号和替换文本
+4. 解析响应以提取编辑操作
+5. 在共享内存中存储推理
+6. 将操作作为字典列表返回
 
 <a id="applying-code-changes-7"></a>
-## 7. Applying Code Changes
+## 7. 应用代码更改
 
-Once the agent has planned the changes, it applies them using `ApplyChangesNode`:
+一旦代理规划了更改，它使用`ApplyChangesNode`应用它们：
 
 ```python
 class ApplyChangesNode(BatchNode):
     def prep(self, shared: Dict[str, Any]) -> List[Dict[str, Any]]:
-        # Get edit operations
+        # 获取编辑操作
         edit_operations = shared.get("edit_operations", [])
         
-        # Sort edit operations in descending order by start_line
-        # This ensures that line numbers remain valid as we edit from bottom to top
+        # 按start_line降序排序编辑操作
+        # 这确保当我们从底部到顶部编辑时，行号保持有效
         sorted_ops = sorted(edit_operations, key=lambda op: op["start_line"], reverse=True)
         
-        # Get target file from history
+        # 从历史中获取目标文件
         history = shared.get("history", [])
         last_action = history[-1]
         target_file = last_action["params"].get("target_file")
         
-        # Ensure path is relative to working directory
+        # 确保路径相对于工作目录
         working_dir = shared.get("working_dir", "")
         full_path = os.path.join(working_dir, target_file) if working_dir else target_file
         
-        # Attach file path to each operation
+        # 将文件路径附加到每个操作
         for op in sorted_ops:
             op["target_file"] = full_path
         
         return sorted_ops
     
     def exec(self, op: Dict[str, Any]) -> Tuple[bool, str]:
-        # Call replace_file utility to replace content
+        # 调用replace_file工具替换内容
         return replace_file(
             target_file=op["target_file"],
             start_line=op["start_line"],
@@ -364,10 +364,10 @@ class ApplyChangesNode(BatchNode):
         )
     
     def post(self, shared: Dict[str, Any], prep_res: List[Dict[str, Any]], exec_res_list: List[Tuple[bool, str]]) -> str:
-        # Check if all operations were successful
+        # 检查所有操作是否成功
         all_successful = all(success for success, _ in exec_res_list)
         
-        # Update edit result in history
+        # 在历史中更新编辑结果
         history = shared.get("history", [])
         if history:
             history[-1]["result"] = {
@@ -377,29 +377,29 @@ class ApplyChangesNode(BatchNode):
                 "reasoning": shared.get("edit_reasoning", "")
             }
         
-        return "decision"  # Go back to the decision node
+        return "decision"  # 回到决策节点
 ```
 
-This node is a `BatchNode`, which allows it to process multiple operations in a single run. It:
-1. Gets the edit operations from shared memory
-2. Sorts them in descending order by start line to ensure edits remain valid
-3. Attaches the target file path to each operation
-4. Executes each operation using the `replace_file` utility
-5. Updates the history with the results
-6. Returns to the decision node
+这个节点是一个`BatchNode`，允许它在单次运行中处理多个操作。它：
+1. 从共享内存获取编辑操作
+2. 按起始行降序排序它们，确保编辑保持有效
+3. 将目标文件路径附加到每个操作
+4. 使用`replace_file`工具执行每个操作
+5. 用结果更新历史
+6. 返回到决策节点
 
-The `replace_file` utility works by combining `remove_file` and `insert_file`:
+`replace_file`工具通过组合`remove_file`和`insert_file`工作：
 
 ```python
 def replace_file(target_file: str, start_line: int, end_line: int, content: str) -> Tuple[str, bool]:
     try:
-        # First, remove the specified lines
+        # 首先，移除指定的行
         remove_result, remove_success = remove_file(target_file, start_line, end_line)
         
         if not remove_success:
             return f"Error during remove step: {remove_result}", False
         
-        # Then, insert the new content at the start line
+        # 然后，在起始行插入新内容
         insert_result, insert_success = insert_file(target_file, content, start_line)
         
         if not insert_success:
@@ -412,9 +412,9 @@ def replace_file(target_file: str, start_line: int, end_line: int, content: str)
 ```
 
 <a id="running-your-agent-8"></a>
-## 8. Running Your Agent
+## 8. 运行你的代理
 
-Now that we've implemented all the key components, let's put it all together in our `main.py`:
+现在我们已经实现了所有关键组件，让我们在`main.py`中将它们全部组合在一起：
 
 ```python
 import os
@@ -423,19 +423,19 @@ import logging
 from flow import coding_agent_flow
 
 def main():
-    # Parse command-line arguments
+    # 解析命令行参数
     parser = argparse.ArgumentParser(description='Coding Agent - AI-powered coding assistant')
     parser.add_argument('--query', '-q', type=str, help='User query to process', required=False)
     parser.add_argument('--working-dir', '-d', type=str, default=os.path.join(os.getcwd(), "project"), 
                         help='Working directory for file operations')
     args = parser.parse_args()
     
-    # If no query provided via command line, ask for it
+    # 如果没有通过命令行提供查询，则询问用户
     user_query = args.query
     if not user_query:
         user_query = input("What would you like me to help you with? ")
     
-    # Initialize shared memory
+    # 初始化共享内存
     shared = {
         "user_query": user_query,
         "working_dir": args.working_dir,
@@ -443,17 +443,17 @@ def main():
         "response": None
     }
     
-    # Run the flow
+    # 运行流程
     coding_agent_flow.run(shared)
 
 if __name__ == "__main__":
     main()
 ```
 
-And finally, let's create the flow in `flow.py`:
+最后，让我们在`flow.py`中创建流程：
 
 ```python
-# Define the nodes
+# 定义节点
 main_decision = MainDecisionAgent()
 read_file_action = ReadFileAction()
 grep_search_action = GrepSearchAction()
@@ -464,7 +464,7 @@ analyze_plan_node = AnalyzeAndPlanNode()
 apply_changes_node = ApplyChangesNode()
 format_response_node = FormatResponseNode()
 
-# Connect the nodes
+# 连接节点
 main_decision - "read_file" >> read_file_action
 main_decision - "grep_search" >> grep_search_action
 main_decision - "list_dir" >> list_dir_action
@@ -472,52 +472,52 @@ main_decision - "delete_file" >> delete_file_action
 main_decision - "edit_file" >> edit_file_node
 main_decision - "finish" >> format_response_node
 
-# Connect action nodes back to main decision
+# 将操作节点连接回主决策
 read_file_action - "decision" >> main_decision
 grep_search_action - "decision" >> main_decision
 list_dir_action - "decision" >> main_decision
 delete_file_action - "decision" >> main_decision
 
-# Connect edit flow
+# 连接编辑流程
 edit_file_node - "analyze" >> analyze_plan_node
 analyze_plan_node - "apply" >> apply_changes_node
 apply_changes_node - "decision" >> main_decision
 
-# Create the flow
+# 创建流程
 coding_agent_flow = Flow(start=main_decision)
 ```
 
-Now you can run your agent with:
+现在你可以用以下命令运行你的代理：
 
 ```bash
 python main.py --query "List all Python files" --working-dir ./project
 ```
 
 <a id="advanced-customizing-your-agent-9"></a>
-## 9. Advanced: Customizing Your Agent
+## 9. 高级：自定义你的代理
 
-One of the most powerful aspects of this architecture is how easy it is to customize. Let's explore a few ways you can extend this agent:
+这个架构最强大的方面之一就是它很容易自定义。让我们探索几种扩展这个代理的方法：
 
-### 1. Adding New Tools
+### 1. 添加新工具
 
-To add a new tool, simply:
-1. Create a new action node class
-2. Add it to the `MainDecisionAgent`'s prompt
-3. Connect it to the flow
+要添加新工具，只需：
+1. 创建新的操作节点类
+2. 将其添加到`MainDecisionAgent`的提示中
+3. 将其连接到流程
 
-For example, to add a "run_tests" tool:
+例如，要添加"run_tests"工具：
 
 ```python
 class RunTestsAction(Node):
     def prep(self, shared):
-        # Get test directory from parameters
+        # 从参数获取测试目录
         history = shared.get("history", [])
         last_action = history[-1]
         test_dir = last_action["params"].get("test_dir")
         return test_dir
     
     def exec(self, test_dir):
-        # Run tests and capture output
+        # 运行测试并捕获输出
         import subprocess
         result = subprocess.run(
             ["pytest", test_dir], 
@@ -527,7 +527,7 @@ class RunTestsAction(Node):
         return result.stdout, result.returncode == 0
     
     def post(self, shared, prep_res, exec_res):
-        # Update history with test results
+        # 用测试结果更新历史
         output, success = exec_res
         history = shared.get("history", [])
         if history:
@@ -537,38 +537,38 @@ class RunTestsAction(Node):
             }
         return "decision"
 
-# Then add to your flow:
+# 然后添加到你的流程：
 run_tests_action = RunTestsAction()
 main_decision - "run_tests" >> run_tests_action
 run_tests_action - "decision" >> main_decision
 ```
 
-### 2. Improving Code Analysis
+### 2. 改进代码分析
 
-You can enhance the code analysis capabilities by modifying the prompts in `AnalyzeAndPlanNode`:
+你可以通过修改`AnalyzeAndPlanNode`中的提示来增强代码分析能力：
 
 ```python
-# Add language-specific hints
+# 添加语言特定的提示
 language_hints = {
     ".py": "This is Python code. Look for function and class definitions.",
     ".js": "This is JavaScript code. Look for function declarations and exports.",
-    # Add more languages as needed
+    # 根据需要添加更多语言
 }
 
-# Update the prompt with language-specific hints
+# 用语言特定提示更新提示
 file_ext = os.path.splitext(target_file)[1]
 language_hint = language_hints.get(file_ext, "")
 prompt += f"\n\nLANGUAGE HINT: {language_hint}"
 ```
 
-### 3. Adding Memory and Context
+### 3. 添加内存和上下文
 
-To give your agent more context, you could add a vector database to store and retrieve relevant information:
+为了给你的代理更多上下文，你可以添加一个向量数据库来存储和检索相关信息：
 
 ```python
 class VectorDBNode(Node):
     def prep(self, shared):
-        # Get text to store
+        # 获取要存储的文本
         history = shared.get("history", [])
         context = ""
         for action in history:
@@ -578,7 +578,7 @@ class VectorDBNode(Node):
         return context
     
     def exec(self, context):
-        # Store in vector DB
+        # 存储在向量数据库中
         embeddings = OpenAIEmbeddings()
         vectordb = Chroma.from_texts(
             texts=[context], 
@@ -593,19 +593,19 @@ class VectorDBNode(Node):
 ```
 
 <a id="conclusion-and-next-steps-10"></a>
-## 10. Conclusion and Next Steps
+## 10. 结论和下一步
 
-Congratulations! You've built a customizable AI coding agent that can help you navigate and modify code based on natural language instructions. This agent demonstrates the power of agentic development, where AI systems help build better AI systems.
+恭喜！你已经构建了一个可定制的AI编码代理，它可以根据自然语言指令帮助你导航和修改代码。这个代理展示了代理开发的力量，其中AI系统帮助构建更好的AI系统。
 
-The possibilities for extending this agent are endless:
-- Add support for more programming languages
-- Implement code refactoring capabilities
-- Create specialized tools for specific frameworks
-- Add security checks before making changes
-- Implement static analysis to catch potential bugs
+扩展这个代理的可能性是无限的：
+- 添加对更多编程语言的支持
+- 实现代码重构功能
+- 为特定框架创建专门的工具
+- 在进行更改之前添加安全检查
+- 实现静态分析以捕获潜在错误
 
-As LLM capabilities continue to improve, agents like this will become even more powerful tools in a developer's arsenal.
+随着LLM能力的持续改进，像这样的代理将成为开发者工具包中更强大的工具。
 
-Want to learn more? Subscribe to our [YouTube channel](https://www.youtube.com/@ZacharyLLM?sub_confirmation=1) for a step-by-step video tutorial on building and extending this agent.
+想了解更多？订阅我们的[YouTube频道](https://www.youtube.com/@ZacharyLLM?sub_confirmation=1)，观看构建和扩展这个代理的分步视频教程。
 
-Happy coding!
+编码愉快！

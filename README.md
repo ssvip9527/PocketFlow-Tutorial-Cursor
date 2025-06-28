@@ -1,6 +1,6 @@
-<h1 align="center">Build Cursor with Cursor</h1>
+<h1 align="center">用Cursor构建Cursor</h1>
 
-Cursor is cool! But what if we use it to build an open-source, customizable AI coding agent? We’ll develop a “Cursor Agent” that writes, reviews, and refactors code—right within Cursor itself. It’s meta, it’s moddable, and it’s powered by the power of Cursor. Let’s build Cursor…with Cursor.
+Cursor很酷！但如果我们用它来构建一个开源的、可定制的AI编码代理呢？我们将开发一个"Cursor代理"，它可以编写、审查和重构代码——就在Cursor内部。这是元编程，它是可修改的，它由Cursor的力量驱动。让我们用Cursor来构建Cursor。
 
 <p align="center">
   <a href="https://youtu.be/HH7TZFgoqEQ" target="_blank">
@@ -10,27 +10,27 @@ Cursor is cool! But what if we use it to build an open-source, customizable AI c
   </a>
 </p>
 
-- To install: 
+- 安装：
   ```bash
   pip install -r requirements.txt
   ```
 
-- To run the Agent
+- 运行代理
   ```bash
   python main.py --query "For Trusted by industry leaders, add two more boxes." --working-dir ./project
   ```
 
-- **How does it work?** The best starting point to learn is the [design doc](docs/design.md) and the [flow code](flow.py).
+- **它是如何工作的？** 学习的最佳起点是[设计文档](docs/design.md)和[流程代码](flow.py)。
 
-- **Note**: This project hasn't been pressure-tested or optimized. We intentionally keep it simple for learning.
+- **注意**：这个项目还没有经过压力测试或优化。我们故意保持简单以便学习。
 
-## I built this Cursor Agent using Cursor itself! 
+## 我使用Cursor本身构建了这个Cursor代理！
 
-- I built using [**Agentic Coding**](https://the-pocket.github.io/PocketFlow/guide.html), the fastest development paradigm, where humans simply [design](docs/design.md) and agents [code](flow.py).
+- 我使用[**代理编码**](https://the-pocket.github.io/PocketFlow/guide.html)构建，这是最快的开发范式，人类只需[设计](docs/design.md)，代理负责[编码](flow.py)。
 
-- The secret weapon is [Pocket Flow](https://github.com/The-Pocket/PocketFlow), a 100-line LLM framework that lets Agents (e.g., Cursor AI) build for you
+- 秘密武器是[Pocket Flow](https://github.com/The-Pocket/PocketFlow)，一个100行的LLM框架，让代理（如Cursor AI）为你构建
   
-- Step-by-step YouTube development tutorial:
+- 逐步YouTube开发教程：
 
   <br>
   <div align="center">
@@ -40,11 +40,11 @@ Cursor is cool! But what if we use it to build an open-source, customizable AI c
   </div>
   <br>
 
-## Examples
+## 示例
 
-We provide an example `project` of SaaS product homepage for the code agent to edit.
+我们提供了一个SaaS产品主页的示例`project`，供代码代理编辑。
 
-To run the page:
+运行页面：
 
 ```
 cd project
@@ -52,7 +52,7 @@ npm install
 npm run dev
 ```
 
-Here are some example queries you can try:
+以下是一些你可以尝试的示例查询：
 ```bash
 python main.py --query "For Trusted by industry leaders, add two more boxes." --working-dir ./project
 ```

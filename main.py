@@ -3,7 +3,7 @@ import argparse
 import logging
 from flow import coding_agent_flow
 
-# Set up logging
+# 设置日志记录
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -17,21 +17,21 @@ logger = logging.getLogger('main')
 
 def main():
     """
-    Run the coding agent to help with code operations
+    运行编码代理来帮助进行代码操作
     """
-    # Parse command-line arguments
+    # 解析命令行参数
     parser = argparse.ArgumentParser(description='Coding Agent - AI-powered coding assistant')
     parser.add_argument('--query', '-q', type=str, help='User query to process', required=False)
     parser.add_argument('--working-dir', '-d', type=str, default=os.path.join(os.getcwd(), "project"), 
                         help='Working directory for file operations (default: current directory)')
     args = parser.parse_args()
     
-    # If no query provided via command line, ask for it
+    # 如果没有通过命令行提供查询，则询问用户
     user_query = args.query
     if not user_query:
         user_query = input("What would you like me to help you with? ")
     
-    # Initialize shared memory
+    # 初始化共享内存
     shared = {
         "user_query": user_query,
         "working_dir": args.working_dir,
@@ -41,7 +41,7 @@ def main():
     
     logger.info(f"Working directory: {args.working_dir}")
     
-    # Run the flow
+    # 运行流程
     coding_agent_flow.run(shared)
 
 if __name__ == "__main__":

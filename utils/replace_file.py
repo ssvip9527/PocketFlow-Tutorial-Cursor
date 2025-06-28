@@ -5,24 +5,24 @@ from utils. insert_file import insert_file
 
 def replace_file(target_file: str, start_line: int, end_line: int, content: str) -> Tuple[str, bool]:
     """
-    Replace content in a file between specified line numbers.
+    替换文件中指定行号之间的内容。
     
     Args:
-        target_file: Path to the file to modify
-        start_line: Starting line number to replace (1-indexed)
-        end_line: Ending line number to replace (1-indexed, inclusive)
-        content: The new content to replace the specified lines with
+        target_file: 要修改的文件路径
+        start_line: 要替换的起始行号（从1开始）
+        end_line: 要替换的结束行号（从1开始，包含）
+        content: 用于替换指定行的新内容
     
     Returns:
-        Tuple of (result message, success status)
+        包含(结果消息, 成功状态)的元组
     """
 
     try:
-        # Check if file exists
+        # 检查文件是否存在
         if not os.path.exists(target_file):
             return f"Error: File {target_file} does not exist", False
         
-        # Validate line numbers
+        # 验证行号
         if start_line < 1:
             return "Error: start_line must be at least 1", False
         
@@ -32,13 +32,13 @@ def replace_file(target_file: str, start_line: int, end_line: int, content: str)
         if start_line > end_line:
             return "Error: start_line must be less than or equal to end_line", False
         
-        # First, remove the specified lines
+        # 首先，移除指定的行
         remove_result, remove_success = remove_file(target_file, start_line, end_line)
         
         if not remove_success:
             return f"Error during remove step: {remove_result}", False
         
-        # Then, insert the new content at the start line
+        # 然后，在起始行插入新内容
         insert_result, insert_success = insert_file(target_file, content, start_line)
         
         if not insert_success:
@@ -50,10 +50,10 @@ def replace_file(target_file: str, start_line: int, end_line: int, content: str)
         return f"Error replacing content: {str(e)}", False
 
 if __name__ == "__main__":
-    # Test replace_file with a temporary file
+    # 使用临时文件测试replace_file
     temp_file = "temp_replace_test.txt"
     
-    # Create a test file with numbered lines
+    # 创建带编号行的测试文件
     try:
         with open(temp_file, 'w') as f:
             for i in range(1, 11):
@@ -63,42 +63,42 @@ if __name__ == "__main__":
         print(f"Error creating test file: {str(e)}")
         exit(1)
     
-    # Show the initial content
+    # 显示初始内容
     with open(temp_file, 'r') as f:
         content = f.read()
     print(f"Initial file content:\n{content}")
     
-    # Test replacing specific lines (3-5)
+    # 测试替换特定行（3-5）
     new_content = "This is the new line 3.\nThis is the new line 4.\nThis is the new line 5.\n"
     replace_result, replace_success = replace_file(temp_file, 3, 5, new_content)
     print(f"\nReplace lines 3-5 result: {replace_result}, success: {replace_success}")
     
-    # Show the updated content
+    # 显示更新后的内容
     with open(temp_file, 'r') as f:
         content = f.read()
     print(f"Updated file content:\n{content}")
     
-    # Test replacing with a different number of lines
+    # 测试用不同行数替换
     new_content = "This is the replacement text.\nIt has only two lines instead of three.\n"
     replace_result, replace_success = replace_file(temp_file, 7, 9, new_content)
     print(f"\nReplace lines 7-9 with 2 lines result: {replace_result}, success: {replace_success}")
     
-    # Show the updated content
+    # 显示更新后的内容
     with open(temp_file, 'r') as f:
         content = f.read()
     print(f"Updated file content:\n{content}")
     
-    # Clean up - delete the test file
+    # 清理 - 删除测试文件
     try:
         os.remove(temp_file)
         print(f"\nSuccessfully deleted {temp_file} for cleanup")
     except Exception as e:
         print(f"Error deleting file: {str(e)}")
     
-    # Example of how to append content using remove_file + insert_file
+    # 示例：如何使用remove_file + insert_file追加内容
     print("\n=== APPEND EXAMPLE ===")
     
-    # Create a new test file
+    # 创建新测试文件
     append_file_path = "append_test.txt"
     try:
         with open(append_file_path, 'w') as f:
@@ -109,67 +109,67 @@ if __name__ == "__main__":
         print(f"Error creating test file: {str(e)}")
         exit(1)
         
-    # Show initial content
+    # 显示初始内容
     with open(append_file_path, 'r') as f:
         content = f.read()
     print(f"Initial file content:\n{content}")
     
-    # Count lines in the file to determine where to append
+    # 统计文件行数以确定追加位置
     with open(append_file_path, 'r') as f:
         line_count = len(f.readlines())
     
-    # Append by using remove_file + insert_file
-    # Step 1: Remove non-existent line at position just after file end
-    # This won't delete anything but prepares for insertion
+    # 通过remove_file + insert_file追加
+    # 步骤1：在文件末尾之后的位置移除不存在的行
+    # 这不会删除任何内容，但为插入做准备
     remove_result, remove_success = remove_file(append_file_path, line_count + 1, line_count + 1)
     print(f"\nRemove step result: {remove_result}, success: {remove_success}")
     
-    # Step 2: Insert new content at the position just after file end
+    # 步骤2：在文件末尾之后插入新内容
     append_content = "This is appended line 1.\nThis is appended line 2.\n"
     insert_result, insert_success = insert_file(append_file_path, append_content, line_count + 1)
     print(f"Insert step result: {insert_result}, success: {insert_success}")
     
-    # Show the updated content
+    # 显示追加后的内容
     with open(append_file_path, 'r') as f:
         content = f.read()
     print(f"Updated file content after append:\n{content}")
     
-    # Test appending again
-    # First, get the new line count
+    # 再次追加测试
+    # 首先获取新行数
     with open(append_file_path, 'r') as f:
         line_count = len(f.readlines())
     
-    # Append one more line using the same technique
+    # 使用相同方法再追加一行
     remove_result, remove_success = remove_file(append_file_path, line_count + 1, line_count + 1)
     append_content = "This is another appended line.\n"
     insert_result, insert_success = insert_file(append_file_path, append_content, line_count + 1)
     
-    # Show the final content
+    # 显示最终内容
     with open(append_file_path, 'r') as f:
         content = f.read()
     print(f"\nFinal file content after second append:\n{content}")
     
-    # Let's test appending at a specific position rather than at the end
-    # For example, let's append at position line_count + 2 (skipping a line)
+    # 测试在特定位置追加而不是末尾
+    # 例如，在line_count + 2位置追加（跳过一行）
     with open(append_file_path, 'r') as f:
         line_count = len(f.readlines())
     
-    # Remove the specific line we want to replace (even if it doesn't exist)
+    # 移除要替换的特定行（即使它不存在）
     remove_result, remove_success = remove_file(append_file_path, line_count + 2, line_count + 2)
     print(f"\nRemove at position {line_count + 2} result: {remove_result}, success: {remove_success}")
     
-    # Insert the content at that specific position
-    # This will automatically add a blank line between the current end of file and our new content
+    # 在该特定位置插入内容
+    # 这会自动在当前文件末尾和新内容之间添加一个空行
     append_content = "This line was inserted at line_count + 2, creating a blank line before it.\n"
     insert_result, insert_success = insert_file(append_file_path, append_content, line_count + 2)
     print(f"Insert at position {line_count + 2} result: {insert_result}, success: {insert_success}")
     
-    # Show the final content
+    # 显示最终内容
     with open(append_file_path, 'r') as f:
         content = f.read()
     print(f"\nFinal file content after inserting at line_count + 2:\n{content}")
     
-    # Clean up - delete the test file
+    # 清理 - 删除测试文件
     try:
         os.remove(append_file_path)
         print(f"\nSuccessfully deleted {append_file_path} for cleanup")

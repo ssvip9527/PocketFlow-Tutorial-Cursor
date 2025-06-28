@@ -1,34 +1,34 @@
-# Design Doc: Coding Agent
+# 设计文档：编码代理
 
-> Please DON'T remove notes for AI
+> 请不要删除AI的注释
 
-## Requirements
+## 需求
 
-> Notes for AI: Keep it simple and clear.
-> If the requirements are abstract, write concrete user stories
+> AI注释：保持简单明了。
+> 如果需求是抽象的，请写具体的用户故事
 
-Implement a Coding Agent, based on the following cursor instruction:
+基于以下cursor指令实现一个编码代理：
 
 ```
-API Parameters and Tool Usage
-===========================
+API参数和工具使用
+==================
 
-1. File Operations:
-   - read_file:
-     * target_file: Path to the file (relative or absolute)
-     * explanation: One sentence explaining the purpose
-     * (Note: Will automatically read the entire file)
+1. 文件操作：
+   - read_file：
+     * target_file：文件路径（相对或绝对）
+     * explanation：解释目的的一句话
+     * （注意：将自动读取整个文件）
 
-   - edit_file:
-     * target_file: Path to the file to modify
-     * instructions: Clear, single-sentence description of the edit
-     * code_edit: The code changes with context, following these rules:
-       - Use "// ... existing code ..." to represent unchanged code between edits
-       - Include sufficient context around the changes to resolve ambiguity
-       - Minimize repeating unchanged code
-       - Never omit code without using the "// ... existing code ..." marker
-       - No need to specify line numbers - the context helps locate the changes
-       Example:
+   - edit_file：
+     * target_file：要修改的文件路径
+     * instructions：清晰的单句编辑描述
+     * code_edit：带有上下文的代码更改，遵循以下规则：
+       - 使用"// ... existing code ..."表示编辑之间未更改的代码
+       - 包含足够的上下文来消除歧义
+       - 最小化重复未更改的代码
+       - 永远不要省略代码而不使用"// ... existing code ..."标记
+       - 无需指定行号 - 上下文帮助定位更改
+       示例：
        ```
        // ... existing code ...
        function newEdit() {
@@ -37,108 +37,108 @@ API Parameters and Tool Usage
        // ... existing code ...
        ```
 
-   - delete_file:
-     * target_file: Path to the file to delete
-     * explanation: Purpose of the deletion
+   - delete_file：
+     * target_file：要删除的文件路径
+     * explanation：删除的目的
 
-2. Search Operations:
-   - grep_search:
-     * query: Exact text or regex pattern to find
-     * case_sensitive: Optional boolean
-     * include_pattern: Optional file type filter (e.g. "*.ts")
-     * exclude_pattern: Optional files to exclude
-     * explanation: Purpose of the search
-     Note: Results capped at 50 matches
+2. 搜索操作：
+   - grep_search：
+     * query：要查找的确切文本或正则表达式模式
+     * case_sensitive：可选的布尔值
+     * include_pattern：可选的文件类型过滤器（如"*.ts"）
+     * exclude_pattern：要排除的可选文件
+     * explanation：搜索的目的
+     注意：结果限制为50个匹配项
 
-3. Directory Operations:
-   - list_dir:
-     * relative_workspace_path: Path to list contents of
-     * explanation: Purpose of listing
+3. 目录操作：
+   - list_dir：
+     * relative_workspace_path：要列出内容的路径
+     * explanation：列出的目的
 
-Important Notes:
-- All file paths can be relative
-- Explanations should be clear and concise
-- Tool calls must include all required parameters
-- Optional parameters should only be included when necessary
-- Use exact values provided by the user when available
-- File search results are limited to 10 results
+重要说明：
+- 所有文件路径都可以是相对的
+- 解释应该清晰简洁
+- 工具调用必须包含所有必需的参数
+- 可选参数仅在必要时包含
+- 在可用时使用用户提供的确切值
+- 文件搜索结果限制为10个结果
 ```
 
-We want to additionally add a code edit agent that, given the context, updates the file.
+我们还想添加一个代码编辑代理，在给定上下文的情况下更新文件。
 
-Note: For educational purposes, the instruction is a simplification of cursor. Specifically:
-1. For read_file, cursor AI reads by a small chunk specified by line number, and 250 lines at maximum.
-   Reading by chunk is a good practice to avoid large files.
-   However, here we read the entire file directly.
-2. For search, Cursor AI also supports codebase_search (embedding) and file_search (fuzzy file name).
-   Here, we only consider grep_search.
-3. Cursor AI also supports run_terminal_cmd, web_search, diff_history.
-   Here, we exclude these actions.
+注意：出于教育目的，该指令是cursor的简化版本。具体来说：
+1. 对于read_file，cursor AI通过行号指定的小块读取，最多250行。
+   按块读取是避免大文件的好做法。
+   但是，这里我们直接读取整个文件。
+2. 对于搜索，Cursor AI还支持codebase_search（嵌入）和file_search（模糊文件名）。
+   这里，我们只考虑grep_search。
+3. Cursor AI还支持run_terminal_cmd、web_search、diff_history。
+   这里，我们排除这些操作。
 
-## Flow Design
+## 流程设计
 
-> Notes for AI:
-> 1. Consider the design patterns of agent, map-reduce, rag, and workflow. Apply them if they fit.
-> 2. Present a concise, high-level description of the workflow.
+> AI注释：
+> 1. 考虑代理、map-reduce、rag和workflow的设计模式。如果适用则应用它们。
+> 2. 提供工作流程的简洁、高级描述。
 
-### Applicable Design Pattern
+### 适用的设计模式
 
-1. Main Decision Agent
-    - **Context**: User input, system context, and previous action results
-    - **Action Space**:
-      - `read_file`: {target_file, explanation}
-      - `edit_file`: {target_file, instructions, code_edit}
-      - `delete_file`: {target_file, explanation}
-      - `grep_search`: {query, case_sensitive, include_pattern, exclude_pattern, explanation}
-      - `list_dir`: {relative_workspace_path, explanation}
-      - `finish`: Return final response to user
-    - **Flow**:
-      1. Parse user request and examine current state
-      2. Match request to available tools
-      3. Select tool and prepare parameters
-      4. Run tool or call Edit File Agent
-      5. Analyze results and decide next step (another tool or finish)
-      6. When complete, format final response
+1. 主决策代理
+    - **上下文**：用户输入、系统上下文和之前的操作结果
+    - **操作空间**：
+      - `read_file`：{target_file, explanation}
+      - `edit_file`：{target_file, instructions, code_edit}
+      - `delete_file`：{target_file, explanation}
+      - `grep_search`：{query, case_sensitive, include_pattern, exclude_pattern, explanation}
+      - `list_dir`：{relative_workspace_path, explanation}
+      - `finish`：向用户返回最终响应
+    - **流程**：
+      1. 解析用户请求并检查当前状态
+      2. 将请求与可用工具匹配
+      3. 选择工具并准备参数
+      4. 运行工具或调用编辑文件代理
+      5. 分析结果并决定下一步（另一个工具或完成）
+      6. 完成时，格式化最终响应
 
-2. Edit File Agent
-    - **Context**: File path, content, and edit instructions
-    - **Internal Flow**:
-      1. **Read File Action**:
-          - Reads target file to understand full context
-          - Parameters: {target_file, explanation="Reading for edit analysis"}
-          - Provides complete code structure for analysis
+2. 编辑文件代理
+    - **上下文**：文件路径、内容和编辑指令
+    - **内部流程**：
+      1. **读取文件操作**：
+          - 读取目标文件以了解完整上下文
+          - 参数：{target_file, explanation="Reading for edit analysis"}
+          - 为分析提供完整的代码结构
       
-      2. **Analyze and Plan Changes Node**:
-          - Reviews edit instructions from Main Agent
-          - Outputs a list of specific edits in format:
+      2. **分析和计划更改节点**：
+          - 审查来自主代理的编辑指令
+          - 输出格式化的特定编辑列表：
             ```
             [
               {
-                start_line: int,  // First line to replace (1-indexed)
-                end_line: int,    // Last line to replace (1-indexed)
-                replacement: str  // New code 
+                start_line: int,  // 要替换的第一行（从1开始）
+                end_line: int,    // 要替换的最后一行（从1开始）
+                replacement: str  // 新代码
               },
               ...
             ]
             ```
       
-      3. **Apply Changes Batch Node**:
-          - Processes each edit in the plan
-          - Sorts edits in **descending order by start_line** (from bottom to top of file)
-          - This ensures that line numbers remain valid for all edits since changes to later lines won't affect the position of earlier lines
-          - Applies edits in correct order to handle overlapping changes
+      3. **应用更改批处理节点**：
+          - 处理计划中的每个编辑
+          - 按start_line**降序**排序编辑（从文件底部到顶部）
+          - 这确保所有编辑的行号保持有效，因为对后面行的更改不会影响前面行的位置
+          - 按正确顺序应用编辑以处理重叠更改
 
-### Flow High-level Design
+### 流程高级设计
 
 ```mermaid
 flowchart TD
-    userRequest[User Request] --> mainAgent[Main Decision Agent]
+    userRequest[用户请求] --> mainAgent[主决策代理]
     
-    mainAgent -->|read_file| readFile[Read File Action]
-    mainAgent -->|edit_file| editAgent[Edit File Agent]
-    mainAgent -->|delete_file| deleteFile[Delete File Action]
-    mainAgent -->|grep_search| grepSearch[Grep Search Action]
-    mainAgent -->|list_dir| listDir[List Directory Action with Tree Viz]
+    mainAgent -->|read_file| readFile[读取文件操作]
+    mainAgent -->|edit_file| editAgent[编辑文件代理]
+    mainAgent -->|delete_file| deleteFile[删除文件操作]
+    mainAgent -->|grep_search| grepSearch[Grep搜索操作]
+    mainAgent -->|list_dir| listDir[列出目录操作（带树形可视化）]
     
     readFile --> mainAgent
     editAgent --> mainAgent
@@ -146,95 +146,95 @@ flowchart TD
     grepSearch --> mainAgent
     listDir --> mainAgent
     
-    mainAgent -->|done| formatResponse[Format Response]
-    formatResponse --> userResponse[Response to User]
+    mainAgent -->|done| formatResponse[格式化响应]
+    formatResponse --> userResponse[用户响应]
 
-    %% Edit File Agent subflow
-    subgraph editAgent[Edit File Agent]
-        readTarget[Read File Action] --> analyzeAndPlan[Analyze and Plan Changes]
-        analyzeAndPlan --> applyChanges[Apply Changes Batch]
+    %% 编辑文件代理子流程
+    subgraph editAgent[编辑文件代理]
+        readTarget[读取文件操作] --> analyzeAndPlan[分析和计划更改]
+        analyzeAndPlan --> applyChanges[应用更改批处理]
     end
 ```
 
-## Utility Functions
+## 工具函数
 
-> Notes for AI:
-> 1. Understand the utility function definition thoroughly by reviewing the doc.
-> 2. Include only the necessary utility functions, based on nodes in the flow.
+> AI注释：
+> 1. 通过查看文档彻底理解工具函数定义。
+> 2. 仅包含基于流程中节点的必要工具函数。
 
-**IMPORTANT**: All file and directory paths in utility functions should be interpreted relative to the `working_dir` provided in the shared memory. Utilities should construct absolute paths by joining `working_dir` with the relative paths they receive as parameters.
+**重要**：工具函数中的所有文件和目录路径都应该相对于共享内存中提供的`working_dir`进行解释。工具应该通过将`working_dir`与它们作为参数接收的相对路径连接来构造绝对路径。
 
-1. **Call LLM** (`utils/call_llm.py`)
-   - Makes API calls to language model services
-   - Input: prompt/messages
-   - Output: LLM response text
+1. **调用LLM**（`utils/call_llm.py`）
+   - 向语言模型服务发出API调用
+   - 输入：prompt/messages
+   - 输出：LLM响应文本
 
-2. **File Operations**
-   - **Read File** (`utils/read_file.py`)
-     - Reads content from specified files
-     - Input: target_file
-     - Output: file content, success status
+2. **文件操作**
+   - **读取文件**（`utils/read_file.py`）
+     - 从指定文件读取内容
+     - 输入：target_file
+     - 输出：文件内容、成功状态
    
-   - **Insert File** (`utils/insert_file.py`)
-     - Writes or inserts content to a target file
-     - Input: target_file, content, line_number
-     - Output: result message, success status
+   - **插入文件**（`utils/insert_file.py`）
+     - 向目标文件写入或插入内容
+     - 输入：target_file, content, line_number
+     - 输出：结果消息、成功状态
    
-   - **Remove File** (`utils/remove_file.py`)
-     - Removes content from a file based on line numbers
-     - Input: target_file, start_line (optional), end_line (optional)
-     - Output: result message, success status
+   - **移除文件**（`utils/remove_file.py`）
+     - 根据行号从文件中移除内容
+     - 输入：target_file, start_line（可选）, end_line（可选）
+     - 输出：结果消息、成功状态
    
-   - **Delete File** (`utils/delete_file.py`)
-     - Deletes a file from the file system
-     - Input: target_file
-     - Output: result message, success status
+   - **删除文件**（`utils/delete_file.py`）
+     - 从文件系统中删除文件
+     - 输入：target_file
+     - 输出：结果消息、成功状态
    
-   - **Replace File** (`utils/replace_file.py`)
-     - Replaces content in a file based on line numbers
-     - Input: target_file, start_line, end_line, new_content
-     - Output: result message, success status
+   - **替换文件**（`utils/replace_file.py`）
+     - 根据行号替换文件中的内容
+     - 输入：target_file, start_line, end_line, new_content
+     - 输出：结果消息、成功状态
 
-3. **Search Operations** (`utils/search_ops.py`)
-   - **Grep Search**
-     - Searches through files for specific patterns using ripgrep-like functionality
-     - Input: query, case_sensitive (optional), include_pattern (optional), exclude_pattern (optional), working_dir (optional)
-     - Output: list of matches (file path, line number, content), success status
+3. **搜索操作**（`utils/search_ops.py`）
+   - **Grep搜索**
+     - 使用类似ripgrep的功能在文件中搜索特定模式
+     - 输入：query, case_sensitive（可选）, include_pattern（可选）, exclude_pattern（可选）, working_dir（可选）
+     - 输出：匹配项列表（文件路径、行号、内容）、成功状态
    
-4. **Directory Operations** (`utils/dir_ops.py`)
-   - **List Directory**
-     - Lists contents of a directory with a tree visualization
-     - Input: relative_workspace_path
-     - Output: success status, tree visualization string
+4. **目录操作**（`utils/dir_ops.py`）
+   - **列出目录**
+     - 列出目录内容并显示树形可视化
+     - 输入：relative_workspace_path
+     - 输出：成功状态、树形可视化字符串
 
-With these utility functions, we can implement the nodes defined in our flow design to create a robust coding agent that can read, modify, search, and navigate through codebase files.
+有了这些工具函数，我们可以实现流程设计中定义的节点，创建一个强大的编码代理，可以读取、修改、搜索和导航代码库文件。
 
-## Node Design
+## 节点设计
 
-### Shared Memory
+### 共享内存
 
-An improved and simpler shared memory structure:
+改进且更简单的共享内存结构：
 
 ```python
 shared = {
-    # User's original query
+    # 用户的原始查询
     "user_query": str,
     
-    # Current working directory - all file operations are relative to this path
-    "working_dir": str,    # IMPORTANT: All file paths in operations are interpreted relative to this directory
+    # 当前工作目录 - 所有文件操作都相对于此路径
+    "working_dir": str,    # 重要：操作中的所有文件路径都相对于此目录进行解释
     
-    # Action history - stores all actions and their results
+    # 操作历史 - 存储所有操作及其结果
     "history": [
         {
-            "tool": str,              # Tool name (e.g., "read_file")
-            "reason": str,            # Brief explanation of why this tool was called
-            "params": dict,           # Parameters used for the tool
-            "result": any,            # Result returned by the tool
-            "timestamp": str          # When the action was performed
+            "tool": str,              # 工具名称（如"read_file"）
+            "reason": str,            # 调用此工具的简要解释
+            "params": dict,           # 工具使用的参数
+            "result": any,            # 工具返回的结果
+            "timestamp": str          # 执行操作的时间
         }
     ],
     
-    # For edit operations (only used during edits)
+    # 用于编辑操作（仅在编辑期间使用）
     "edit_operations": [
         {
             "start_line": int,
@@ -243,70 +243,70 @@ shared = {
         }
     ],
     
-    # Final response to return to user
+    # 返回给用户的最终响应
     "response": str
 }
 ```
 
-### Node Steps
+### 节点步骤
 
-1. Main Decision Agent Node
-- **Purpose**: Interprets user requests and decides which tool to use
-- **Type**: Regular Node
-- **Steps**:
-  - **prep**: 
-    - Read `shared["user_query"]` and `shared["history"]`
-    - Return user query and relevant history
-  - **exec**:
-    - Call LLM to decide which tool to use and prepare parameters
-    - Return tool name, reason for using it, and parameters
-  - **post**:
-    - Add new action to `shared["history"]` with tool, reason, and parameters
-    - Return action string for the selected tool
+1. 主决策代理节点
+- **目的**：解释用户请求并决定使用哪个工具
+- **类型**：常规节点
+- **步骤**：
+  - **prep**：
+    - 读取`shared["user_query"]`和`shared["history"]`
+    - 返回用户查询和相关历史
+  - **exec**：
+    - 调用LLM决定使用哪个工具并准备参数
+    - 返回工具名称、使用原因和参数
+  - **post**：
+    - 将新操作添加到`shared["history"]`，包含工具、原因和参数
+    - 返回所选工具的操作字符串
 
-2. Read File Action Node
-- **Purpose**: Reads specified file content
-- **Type**: Regular Node
-- **Steps**:
-  - **prep**:
-    - Get file path from last entry in `shared["history"]["params"]`
-    - Ensure path is interpreted relative to `shared["working_dir"]`
-    - Return file path
-  - **exec**:
-    - Call read_file utility with the path
-    - Return file content
-  - **post**:
-    - Update last history entry with result
-    - Return "decide_next"
+2. 读取文件操作节点
+- **目的**：读取指定文件内容
+- **类型**：常规节点
+- **步骤**：
+  - **prep**：
+    - 从`shared["history"]["params"]`的最后一项获取文件路径
+    - 确保路径相对于`shared["working_dir"]`进行解释
+    - 返回文件路径
+  - **exec**：
+    - 使用路径调用read_file工具
+    - 返回文件内容
+  - **post**：
+    - 用结果更新最后的历史条目
+    - 返回"decide_next"
 
-3. Grep Search Action Node
-- **Purpose**: Searches for patterns in files
-- **Type**: Regular Node
-- **Steps**:
-  - **prep**:
-    - Get search parameters from last entry in `shared["history"]["params"]`
-    - Ensure any path patterns are interpreted relative to `shared["working_dir"]`
-    - Return search parameters
-  - **exec**:
-    - Call grep_search utility
-    - Return search results
-  - **post**:
-    - Update last history entry with results
-    - Return "decide_next"
+3. Grep搜索操作节点
+- **目的**：在文件中搜索模式
+- **类型**：常规节点
+- **步骤**：
+  - **prep**：
+    - 从`shared["history"]["params"]`的最后一项获取搜索参数
+    - 确保任何路径模式都相对于`shared["working_dir"]`进行解释
+    - 返回搜索参数
+  - **exec**：
+    - 调用grep_search工具
+    - 返回搜索结果
+  - **post**：
+    - 用结果更新最后的历史条目
+    - 返回"decide_next"
 
-4. List Directory Action Node
-- **Purpose**: Lists directory contents with tree visualization
-- **Type**: Regular Node
-- **Steps**:
-  - **prep**:
-    - Get directory path from last entry in `shared["history"]["params"]`
-    - Ensure path is interpreted relative to `shared["working_dir"]`
-    - Return path
-  - **exec**:
-    - Call list_dir utility which now returns (success, tree_str)
-    - Return success status and tree visualization string
-  - **post**:
-    - Update last history entry with the result:
+4. 列出目录操作节点
+- **目的**：列出目录内容并显示树形可视化
+- **类型**：常规节点
+- **步骤**：
+  - **prep**：
+    - 从`shared["history"]["params"]`的最后一项获取目录路径
+    - 确保路径相对于`shared["working_dir"]`进行解释
+    - 返回路径
+  - **exec**：
+    - 调用list_dir工具，现在返回(success, tree_str)
+    - 返回成功状态和树形可视化字符串
+  - **post**：
+    - 用结果更新最后的历史条目：
       ```python
       history_entry = shared["history"][-1]
       success, tree_str = exec_res
@@ -315,82 +315,82 @@ shared = {
           "tree_visualization": tree_str
       }
       ```
-    - Return "decide_next"
+    - 返回"decide_next"
 
-5. Delete File Action Node
-- **Purpose**: Deletes a file
-- **Type**: Regular Node
-- **Steps**:
-  - **prep**:
-    - Get file path from last entry in `shared["history"]["params"]`
-    - Ensure path is interpreted relative to `shared["working_dir"]`
-    - Return file path
-  - **exec**:
-    - Call delete_file utility
-    - Return success status
-  - **post**:
-    - Update last history entry with result
-    - Return "decide_next"
+5. 删除文件操作节点
+- **目的**：删除文件
+- **类型**：常规节点
+- **步骤**：
+  - **prep**：
+    - 从`shared["history"]["params"]`的最后一项获取文件路径
+    - 确保路径相对于`shared["working_dir"]`进行解释
+    - 返回文件路径
+  - **exec**：
+    - 调用delete_file工具
+    - 返回成功状态
+  - **post**：
+    - 用结果更新最后的历史条目
+    - 返回"decide_next"
 
-6. Read Target File Node (Edit Agent)
-- **Purpose**: Reads file for editing (first step in edit process)
-- **Type**: Regular Node
-- **Steps**:
-  - **prep**:
-    - Get file path from last entry in `shared["history"]["params"]` (the edit_file action)
-    - Ensure path is interpreted relative to `shared["working_dir"]`
-    - Return file path
-  - **exec**:
-    - Call read_file utility to read entire file
-    - Return file content
-  - **post**:
-    - Store file content in the history entry
-    - Return "analyze_plan"
+6. 读取目标文件节点（编辑代理）
+- **目的**：读取文件进行编辑（编辑过程的第一步）
+- **类型**：常规节点
+- **步骤**：
+  - **prep**：
+    - 从`shared["history"]["params"]`的最后一项获取文件路径（edit_file操作）
+    - 确保路径相对于`shared["working_dir"]`进行解释
+    - 返回文件路径
+  - **exec**：
+    - 调用read_file工具读取整个文件
+    - 返回文件内容
+  - **post**：
+    - 在历史条目中存储文件内容
+    - 返回"analyze_plan"
 
-7. Analyze and Plan Changes Node (Edit Agent)
-- **Purpose**: Plans specific edit operations
-- **Type**: Regular Node
-- **Steps**:
-  - **prep**:
-    - Get file content from history
-    - Get edit instructions and code_edit from history params
-    - Return file content, instructions, and code_edit
-  - **exec**:
-    - Call LLM to analyze and create edit plan
-    - Return structured list of edits
-  - **post**:
-    - Store edits in `shared["edit_operations"]`
-    - Return "apply_changes"
+7. 分析和计划更改节点（编辑代理）
+- **目的**：计划特定的编辑操作
+- **类型**：常规节点
+- **步骤**：
+  - **prep**：
+    - 从历史中获取文件内容
+    - 从历史参数中获取编辑指令和code_edit
+    - 返回文件内容、指令和code_edit
+  - **exec**：
+    - 调用LLM分析和创建编辑计划
+    - 返回结构化的编辑列表
+  - **post**：
+    - 在`shared["edit_operations"]`中存储编辑
+    - 返回"apply_changes"
 
-8. Apply Changes Batch Node (Edit Agent)
-- **Purpose**: Applies edits to file
-- **Type**: BatchNode
-- **Steps**:
-  - **prep**:
-    - Read `shared["edit_operations"]`
-    - Sort in descending order by start_line
-    - Return sorted edit operations
-  - **exec**:
-    - For each edit operation, call replace_file utility with:
-      - target_file (from history)
-      - start_line and end_line (from edit operation)
-      - replacement (from edit operation)
-    - Return success status for each operation
-  - **post**:
-    - Update edit result in history
-    - Clear `shared["edit_operations"]` after processing
-    - Return "decide_next"
+8. 应用更改批处理节点（编辑代理）
+- **目的**：将编辑应用到文件
+- **类型**：BatchNode
+- **步骤**：
+  - **prep**：
+    - 读取`shared["edit_operations"]`
+    - 按start_line降序排序
+    - 返回排序后的编辑操作
+  - **exec**：
+    - 对于每个编辑操作，使用以下参数调用replace_file工具：
+      - target_file（来自历史）
+      - start_line和end_line（来自编辑操作）
+      - replacement（来自编辑操作）
+    - 返回每个操作的成功状态
+  - **post**：
+    - 在历史中更新编辑结果
+    - 处理完成后清除`shared["edit_operations"]`
+    - 返回"decide_next"
 
-9. Format Response Node
-- **Purpose**: Creates response for user
-- **Type**: Regular Node
-- **Steps**:
-  - **prep**:
-    - Read `shared["history"]`
-    - Return history
-  - **exec**:
-    - Call LLM to generate response
-    - Return formatted response
-  - **post**:
-    - Store response in `shared["response"]`
-    - Return "done"
+9. 格式化响应节点
+- **目的**：为用户创建响应
+- **类型**：常规节点
+- **步骤**：
+  - **prep**：
+    - 读取`shared["history"]`
+    - 返回历史
+  - **exec**：
+    - 调用LLM生成响应
+    - 返回格式化的响应
+  - **post**：
+    - 在`shared["response"]`中存储响应
+    - 返回"done"

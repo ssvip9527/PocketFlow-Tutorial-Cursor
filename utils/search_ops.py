@@ -10,47 +10,47 @@ def grep_search(
     working_dir: str = ""
 ) -> Tuple[List[Dict[str, Any]], bool]:
     """
-    Search through files for specific patterns using regex.
+    使用正则表达式在文件中搜索特定模式。
     
     Args:
-        query: Regex pattern to find
-        case_sensitive: Whether the search is case sensitive
-        include_pattern: Glob pattern for files to include (e.g., "*.py")
-        exclude_pattern: Glob pattern for files to exclude
-        working_dir: Directory to search in (defaults to current directory if empty)
+        query: 要查找的正则表达式模式
+        case_sensitive: 搜索是否区分大小写
+        include_pattern: 要包含的文件的glob模式（如"*.py"）
+        exclude_pattern: 要排除的文件的glob模式
+        working_dir: 要搜索的目录（如果为空则为当前目录）
         
     Returns:
-        Tuple of (list of matches, success status)
-        Each match contains:
+        包含(匹配项列表, 成功状态)的元组
+        每个匹配项包含：
         {
-            "file": file path,
-            "line_number": line number (1-indexed),
-            "content": matched line content
+            "file": 文件路径,
+            "line_number": 行号（从1开始）,
+            "content": 匹配的行内容
         }
     """
     results = []
     search_dir = working_dir if working_dir else "."
     
     try:
-        # Compile the regex pattern
+        # 编译正则表达式模式
         try:
             pattern = re.compile(query, 0 if case_sensitive else re.IGNORECASE)
         except re.error as e:
             print(f"Invalid regex pattern: {str(e)}")
             return [], False
         
-        # Convert glob patterns to regex for file matching
+        # 将glob模式转换为正则表达式用于文件匹配
         include_regexes = _glob_to_regex(include_pattern) if include_pattern else None
         exclude_regexes = _glob_to_regex(exclude_pattern) if exclude_pattern else None
         
-        # Walk through the directory and search files
+        # 遍历目录并搜索文件
         for root, _, files in os.walk(search_dir):
             for filename in files:
-                # Skip files that don't match inclusion pattern
+                # 跳过不匹配包含模式的文件
                 if include_regexes and not any(r.match(filename) for r in include_regexes):
                     continue
                 
-                # Skip files that match exclusion pattern
+                # 跳过匹配排除模式的文件
                 if exclude_regexes and any(r.match(filename) for r in exclude_regexes):
                     continue
                 
@@ -66,11 +66,11 @@ def grep_search(
                                     "content": line.rstrip()
                                 })
                                 
-                                # Limit to 50 results
+                                # 最多限制50个结果
                                 if len(results) >= 50:
                                     break
                 except Exception:
-                    # Skip files that can't be read
+                    # 跳过无法读取的文件
                     continue
                 
                 if len(results) >= 50:
@@ -86,7 +86,7 @@ def grep_search(
         return [], False
 
 def _glob_to_regex(pattern_str: str) -> List[re.Pattern]:
-    """Convert comma-separated glob patterns to regex patterns."""
+    """将逗号分隔的glob模式转换为正则表达式模式。"""
     patterns = []
     
     for glob in pattern_str.split(','):
@@ -94,30 +94,30 @@ def _glob_to_regex(pattern_str: str) -> List[re.Pattern]:
         if not glob:
             continue
         
-        # Convert glob syntax to regex
+        # 将glob语法转换为正则表达式
         regex = (glob
-                .replace('.', r'\.')  # Escape dots
-                .replace('*', r'.*')  # * becomes .*
-                .replace('?', r'.'))  # ? becomes .
+                .replace('.', r'\.')  # 转义点
+                .replace('*', r'.*')  # *变为.*
+                .replace('?', r'.'))  # ?变为.
         
         try:
             patterns.append(re.compile(f"^{regex}$"))
         except re.error:
-            # Skip invalid patterns
+            # 跳过无效模式
             continue
     
     return patterns
 
 if __name__ == "__main__":
-    # Test the grep search function
+    # 测试grep搜索函数
     print("Testing basic search for 'def' in Python files:")
     results, success = grep_search("def", include_pattern="*.py")
     print(f"Search success: {success}")
     print(f"Found {len(results)} matches")
-    for result in results[:5]:  # Print first 5 results
+    for result in results[:5]:  # 打印前5个结果
         print(f"{result['file']}:{result['line_number']}: {result['content'][:50]}...")
         
-    # Test case for searching CSS color patterns with regex
+    # 用正则表达式测试CSS颜色搜索
     print("\nTesting CSS color search with regex:")
     css_query = r"background-color|background:|backgroundColor|light blue|#add8e6|rgb\(173, 216, 230\)"
     css_results, css_success = grep_search(
